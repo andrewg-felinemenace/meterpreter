@@ -8,6 +8,9 @@ framework_dir = ../metasploit-framework/
 # Change me if you want to build openssl and libpcap somewhere else
 build_tmp = posix-meterp-build-tmp
 
+# Change me if you want to store dependencies somewhere else
+build_dep = posix-meterp-build-dep
+
 BUILDARCH=$(uname -m)-$(file /bin/ls | grep -o '[ML]SB')
 
 ROOT=$(basename $(CURDIR:%/=%))
@@ -20,7 +23,6 @@ objects += $(COMPILED)/libssl.so
 objects += $(COMPILED)/libpcap.so
 objects += $(COMPILED)/libsupport.so
 objects += $(COMPILED)/libmetsrv_main.so
-
 
 outputs  = data/meterpreter/msflinker_linux_x86.bin
 outputs += data/meterpreter/ext_server_stdapi.lso
@@ -36,8 +38,17 @@ debug: DEBUG=true
 debug: MAKE += debug
 debug: all
 
-$(COMPILED):
-	mkdir $(COMPILED)/
+$(build_dep):
+	mkdir $(build_dep)/
+
+dependencies: $(build_dep)
+	[ -f $(build_dep)/openssl-1.0.1g.tar.gz ] || wget -O $(build_dep)/openssl-1.0.1g.tar.gz https://www.openssl.org/source/openssl-1.0.1g.tar.gz
+	[ -f $(build_dep)/libpcap-1.1.1.tar.gz ] || wget -O $(build_dep)/libpcap-1.1.1.tar.gz http://www.tcpdump.org/release/libpcap-1.1.1.tar.gz
+	[ -f $(build_dep)/crossx86-mips-linux-musl-1.0.0.tar.xz ] || wget -O $(build_dep)/crossx86-mips-linux-musl-1.0.0.tar.xz https://googledrive.com/host/0BwnS5DMB0YQ6bDhPZkpOYVFhbk0/musl-1.0.0/crossx86-mips-linux-musl-1.0.0.tar.xz
+
+
+$(COMPILED): dependencies build_tmp
+	[ -d $(COMPILED)/ ] || mkdir $(COMPILED)/
 
 $(COMPILED)/libc.so: $(COMPILED)
 	(cd ${ROOT}/source/musl ; ./configure --prefix=${COMPILED}/musl --syslibdir=${COMPILED}/musl --enable-gcc-wrapper ; make && make install )
@@ -51,8 +62,7 @@ $(COMPILED)/libssl.so: $(build_tmp)/openssl-1.0.1g/libssl.so
 
 $(build_tmp)/openssl-1.0.1g/libssl.so:
 	[ -d $(build_tmp) ] || mkdir $(build_tmp)
-	[ -f $(build_tmp)/openssl-1.0.1g.tar.gz ] || wget -O $(build_tmp)/openssl-1.0.1g.tar.gz https://www.openssl.org/source/openssl-1.0.1g.tar.gz
-	[ -d $(build_tmp)/openssl-1.0.1g ] || tar -C $(build_tmp)/ -xzf $(build_tmp)/openssl-1.0.1g.tar.gz
+	[ -d $(build_tmp)/openssl-1.0.1g ] || tar -C $(build_tmp)/ -xzf $(build_dep)/openssl-1.0.1g.tar.gz
 	(cd $(build_tmp)/openssl-1.0.1g &&                                                       \
 		CC=$(COMPILED)/musl/bin/musl-gcc ./Configure --prefix=/tmp/out threads shared no-hw no-dlfcn no-zlib no-krb5 no-idea linux-generic64 && \
 		patch -p1 < $(ROOT)/patches/linux-musl-libc-termios.patch \
@@ -64,8 +74,7 @@ $(COMPILED)/libpcap.so: $(build_tmp)/libpcap-1.1.1/libpcap.so.1.1.1
 
 $(build_tmp)/libpcap-1.1.1/libpcap.so.1.1.1:
 	[ -d $(build_tmp) ] || mkdir $(build_tmp)
-	[ -f $(build_tmp)/libpcap-1.1.1.tar.gz ] || wget -O $(build_tmp)/libpcap-1.1.1.tar.gz http://www.tcpdump.org/release/libpcap-1.1.1.tar.gz
-	[ -f $(build_tmp)/libpcap-1.1.1/configure ] || tar -C $(build_tmp) -xzf $(build_tmp)/libpcap-1.1.1.tar.gz
+	[ -f $(build_tmp)/libpcap-1.1.1/configure ] || tar -C $(build_tmp) -xzf $(build_dep)/libpcap-1.1.1.tar.gz
 	(cd $(build_tmp)/libpcap-1.1.1 && CC=$(COMPILED)/musl/bin/musl-gcc ./configure --disable-bluetooth --without-bluetooth --without-usb --disable-usb --without-can --disable-can --without-usb-linux --disable-usb-linux --without-libnl)
 	echo '#undef HAVE_DECL_ETHER_HOSTTON' >> $(build_tmp)/libpcap-1.1.1/config.h
 	echo '#undef HAVE_SYS_BITYPES_H' >> $(build_tmp)/libpcap-1.1.1/config.h
