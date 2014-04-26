@@ -1,3 +1,7 @@
 [submodule "source/ReflectiveDLLInjection"]
 	path = source/ReflectiveDLLInjection
 	url = https://github.com/rapid7/ReflectiveDLLInjection.git
+[submodule "source/musl"]
+	path = source/musl
+	url = git://git.musl-libc.org/musl
+	branch = v1.1.0
