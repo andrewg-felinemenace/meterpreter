@@ -1,6 +1,7 @@
 #include "precomp.h"
 
 #ifndef _WIN32
+#define _GNU_SOURCE
 #include <sys/utsname.h>
 #endif
 
